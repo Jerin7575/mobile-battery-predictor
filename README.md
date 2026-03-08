@@ -85,6 +85,13 @@ After running the command above, open your browser and go to: http://localhost:8
 
 ---
 
+## Single Command
+
+git clone https://github.com/jerin7575/mobile-battery-predictor.git && cd mobile-battery-predictor && pip install -r requirements.txt && streamlit run app.py
+
+
+---
+
 # 📊 How to Use the App
 
 1. Adjust the sliders for:
