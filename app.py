@@ -25,14 +25,8 @@ st.markdown("""
 <style>
 
 .main-title{
-font-size:42px;
+font-size:40px;
 font-weight:700;
-}
-
-.metric-box{
-background-color:#f3f3f3;
-padding:15px;
-border-radius:10px;
 }
 
 .stButton>button{
@@ -67,11 +61,6 @@ def load_data():
 
 data = load_data()
 
-
-# --------------------------------
-# CLEAN DATA
-# --------------------------------
-
 data = data.drop_duplicates()
 data = data.dropna()
 
@@ -81,12 +70,10 @@ data = data.dropna()
 # --------------------------------
 
 features = [
-
     "Screen_On_Time_min",
     "Brightness_Level_%",
     "CPU_Usage_%",
     "RAM_Usage_MB"
-
 ]
 
 target = "Battery_Drop_Per_Hour"
@@ -118,11 +105,8 @@ X_train, X_test, y_train, y_test = train_test_split(
 def train_model():
 
     model = RandomForestRegressor(
-
         n_estimators=300,
-        max_depth=12,
         random_state=42
-
     )
 
     model.fit(X_train, y_train)
@@ -181,50 +165,38 @@ st.subheader("📲 Enter Phone Usage Details")
 
 with st.form("prediction_form"):
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2 = st.columns(2)
 
     with col1:
 
         brightness = st.slider(
-
             "🔆 Brightness Level (%)",
             0,
             100,
             50
-
         )
 
-    with col2:
-
         cpu = st.slider(
-
             "🧠 CPU Usage (%)",
             0,
             100,
             30
-
         )
 
-    with col3:
+    with col2:
 
         ram = st.slider(
-
             "💾 RAM Usage (MB)",
             500,
             8000,
             2000
-
         )
 
-    with col4:
-
         screen_time = st.slider(
-
             "⏱ Screen On Time (minutes)",
             0,
             300,
             60
-
         )
 
     submit_button = st.form_submit_button("🔋 Predict Battery Drain")
@@ -241,12 +213,10 @@ if submit_button:
         [[screen_time, brightness, cpu, ram]],
 
         columns=[
-
             "Screen_On_Time_min",
             "Brightness_Level_%",
             "CPU_Usage_%",
             "RAM_Usage_MB"
-
         ]
 
     )
@@ -254,9 +224,7 @@ if submit_button:
 
     prediction = model.predict(input_data)[0]
 
-
     st.success(f"Estimated Battery Drop Per Hour: {prediction:.2f}%")
-
 
     if prediction > 0:
 
