@@ -1,8 +1,6 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
 import joblib
-import base64
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
@@ -79,25 +77,25 @@ if uploaded_file is not None:
     col2.metric("MAE", f"{mae:.2f}")
     col3.metric("MSE", f"{mse:.2f}")
 
-    # ---------------- GRAPH: ACTUAL VS PREDICTED ----------------
+    # ---------------- ACTUAL VS PREDICTED ----------------
     st.subheader("📊 Actual vs Predicted")
 
-    fig1 = plt.figure()
-    plt.scatter(y_test, y_pred)
-    plt.xlabel("Actual")
-    plt.ylabel("Predicted")
-    plt.title("Actual vs Predicted Battery Drain")
-    st.pyplot(fig1)
+    chart_df = pd.DataFrame({
+        "Actual": y_test.values,
+        "Predicted": y_pred
+    })
+
+    st.scatter_chart(chart_df)
 
     # ---------------- FEATURE IMPORTANCE ----------------
     st.subheader("📈 Feature Importance")
 
-    importances = model.feature_importances_
-    fig2 = plt.figure()
-    plt.barh(features, importances)
-    plt.xlabel("Importance")
-    plt.title("Feature Importance")
-    st.pyplot(fig2)
+    importance_df = pd.DataFrame({
+        "Feature": features,
+        "Importance": model.feature_importances_
+    }).set_index("Feature")
+
+    st.bar_chart(importance_df)
 
     # ---------------- DOWNLOAD MODEL ----------------
     st.subheader("📁 Download Trained Model")
