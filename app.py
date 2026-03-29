@@ -1,98 +1,141 @@
 import streamlit as st
 import pandas as pd
+import matplotlib.pyplot as plt
+import joblib
+import base64
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 
-
+# ---------------- UI SETTINGS ----------------
 st.set_page_config(
     page_title="Mobile Battery Drain Predictor",
     page_icon="🔋",
     layout="wide"
 )
 
-st.title("🔋 Mobile Battery Drain Predictor")
+# Dark mode toggle
+dark_mode = st.toggle("🌙 Dark Mode")
 
-st.write("Predict smartphone battery drain based on usage patterns.")
-
-
-# Load dataset
-data = pd.read_csv("smartphone_battery_drain_dataset.csv")
-
-data = data.drop_duplicates()
-data = data.dropna()
-
-
-# Features
-features = [
-    "Screen_On_Time_min",
-    "Brightness_Level_%",
-    "CPU_Usage_%",
-    "RAM_Usage_MB"
-]
-
-target = "Battery_Drop_Per_Hour"
-
-X = data[features]
-y = data[target]
-
-
-# Train test split
-X_train, X_test, y_train, y_test = train_test_split(
-    X,
-    y,
-    test_size=0.2,
-    random_state=42
-)
-
-
-# Train model
-model = RandomForestRegressor(n_estimators=200, random_state=42)
-
-model.fit(X_train, y_train)
-
-
-# Evaluate
-y_pred = model.predict(X_test)
-
-r2 = r2_score(y_test, y_pred)
-mae = mean_absolute_error(y_test, y_pred)
-mse = mean_squared_error(y_test, y_pred)
-
-st.subheader("Model Performance")
-
-col1, col2, col3 = st.columns(3)
-
-col1.metric("R² Score", f"{r2*100:.2f}%")
-col2.metric("MAE", f"{mae:.2f}")
-col3.metric("MSE", f"{mse:.2f}")
-
-
-# Input section
-st.subheader("Enter Phone Usage")
-
-brightness = st.slider("Brightness (%)",0,100,50)
-cpu = st.slider("CPU Usage (%)",0,100,30)
-ram = st.slider("RAM Usage (MB)",500,8000,2000)
-screen = st.slider("Screen Time (minutes)",0,300,60)
-
-
-if st.button("Predict Battery Drain"):
-
-    input_data = pd.DataFrame(
-        [[screen, brightness, cpu, ram]],
-        columns=[
-            "Screen_On_Time_min",
-            "Brightness_Level_%",
-            "CPU_Usage_%",
-            "RAM_Usage_MB"
-        ]
+if dark_mode:
+    st.markdown(
+        """
+        <style>
+        body { background-color: #0e1117; color: white; }
+        </style>
+        """,
+        unsafe_allow_html=True
     )
 
-    prediction = model.predict(input_data)[0]
+st.title("🔋 Mobile Battery Drain Predictor")
+st.write("Predict smartphone battery drain based on usage patterns.")
 
-    st.success(f"Estimated Battery Drop Per Hour: {prediction:.2f}%")
+# ---------------- FILE UPLOAD ----------------
+uploaded_file = st.file_uploader("Upload Dataset CSV", type=["csv"])
 
-    if prediction > 0:
-        duration = 100 / prediction
-        st.info(f"Estimated Battery Duration: {duration:.2f} hours")
+if uploaded_file is not None:
+    data = pd.read_csv(uploaded_file)
+
+    data = data.drop_duplicates()
+    data = data.dropna()
+
+    features = [
+        "Screen_On_Time_min",
+        "Brightness_Level_%",
+        "CPU_Usage_%",
+        "RAM_Usage_MB"
+    ]
+
+    target = "Battery_Drop_Per_Hour"
+
+    X = data[features]
+    y = data[target]
+
+    # ---------------- MODEL TRAINING ----------------
+    @st.cache_resource
+    def train_model(X, y):
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42
+        )
+
+        model = RandomForestRegressor(n_estimators=200, random_state=42)
+        model.fit(X_train, y_train)
+
+        y_pred = model.predict(X_test)
+
+        return model, X_test, y_test, y_pred
+
+    model, X_test, y_test, y_pred = train_model(X, y)
+
+    # ---------------- METRICS ----------------
+    r2 = r2_score(y_test, y_pred)
+    mae = mean_absolute_error(y_test, y_pred)
+    mse = mean_squared_error(y_test, y_pred)
+
+    st.subheader("Model Performance")
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("R² Score", f"{r2*100:.2f}%")
+    col2.metric("MAE", f"{mae:.2f}")
+    col3.metric("MSE", f"{mse:.2f}")
+
+    # ---------------- GRAPH: ACTUAL VS PREDICTED ----------------
+    st.subheader("📊 Actual vs Predicted")
+
+    fig1 = plt.figure()
+    plt.scatter(y_test, y_pred)
+    plt.xlabel("Actual")
+    plt.ylabel("Predicted")
+    plt.title("Actual vs Predicted Battery Drain")
+    st.pyplot(fig1)
+
+    # ---------------- FEATURE IMPORTANCE ----------------
+    st.subheader("📈 Feature Importance")
+
+    importances = model.feature_importances_
+    fig2 = plt.figure()
+    plt.barh(features, importances)
+    plt.xlabel("Importance")
+    plt.title("Feature Importance")
+    st.pyplot(fig2)
+
+    # ---------------- DOWNLOAD MODEL ----------------
+    st.subheader("📁 Download Trained Model")
+
+    model_file = "battery_model.pkl"
+    joblib.dump(model, model_file)
+
+    with open(model_file, "rb") as f:
+        bytes_data = f.read()
+
+    st.download_button(
+        label="Download Model",
+        data=bytes_data,
+        file_name="battery_model.pkl",
+        mime="application/octet-stream"
+    )
+
+    # ---------------- INPUT SECTION ----------------
+    st.subheader("Enter Phone Usage")
+
+    brightness = st.slider("Brightness (%)", 0, 100, 50)
+    cpu = st.slider("CPU Usage (%)", 0, 100, 30)
+    ram = st.slider("RAM Usage (MB)", 500, 8000, 2000)
+    screen = st.slider("Screen Time (minutes)", 0, 300, 60)
+
+    if st.button("Predict Battery Drain"):
+        input_data = pd.DataFrame(
+            [[screen, brightness, cpu, ram]],
+            columns=features
+        )
+
+        prediction = model.predict(input_data)[0]
+
+        st.success(f"Estimated Battery Drop Per Hour: {prediction:.2f}%")
+
+        if prediction > 0:
+            duration = 100 / prediction
+            st.info(f"Estimated Battery Duration: {duration:.2f} hours")
+
+else:
+    st.warning("Please upload a dataset to continue.")
